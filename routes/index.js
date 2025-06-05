@@ -1,9 +1,8 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
+const { generatePassword, comparePassword } = require("../helpers/utils");
 const router = express.Router();
 
 module.exports = function (db) {
-  // Halaman login
   router.get("/", function (req, res) {
     const successMessage = req.session.success || null;
     delete req.session.success;
@@ -13,17 +12,14 @@ module.exports = function (db) {
     });
   });
 
-  // Halaman register
   router.get("/register", function (req, res) {
     res.render("register", {
-      errorMessage: null, 
+      errorMessage: null,
     });
   });
 
-  // Proses register
   router.post("/register", async function (req, res) {
     const { email, password, repassword } = req.body;
-    console.log(req.body);
 
     if (password !== repassword) {
       return res.render("register", {
@@ -42,7 +38,7 @@ module.exports = function (db) {
         });
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = generatePassword(password);
       await db.query(`INSERT INTO users (email, password) VALUES ($1, $2)`, [
         email,
         hashedPassword,
@@ -57,7 +53,6 @@ module.exports = function (db) {
     }
   });
 
-  // Proses login
   router.post("/login", async function (req, res) {
     const { email, password } = req.body;
 
@@ -68,13 +63,13 @@ module.exports = function (db) {
 
       if (result.rows.length === 0) {
         return res.render("login", {
-          errorMessage: "email is not registered", 
+          errorMessage: "email is not registered",
           successMessage: null,
         });
       }
 
       const user = result.rows[0];
-      const match = await bcrypt.compare(password, user.password);
+      const match = comparePassword(password, user.password);
 
       if (!match) {
         return res.render("login", {
@@ -93,7 +88,6 @@ module.exports = function (db) {
     }
   });
 
-  // Logout
   router.get("/logout", function (req, res) {
     req.session.destroy((err) => {
       if (err) {
