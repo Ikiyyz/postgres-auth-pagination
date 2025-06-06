@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostgreSQL BREADS & Authentication</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .form-control::placeholder {
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="deleteMessage">
+                    Are you sure you want to delete this data?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <a id="confirmDeleteBtn" href="#" class="btn btn-warning text-white">Yes</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="card">
+            <!-- Header with User Profile -->
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center"
+                        style="width: 50px; height: 50px;">
+                        <i class="bi bi-person-fill text-white fs-4"></i>
+                    </div>
+                    <h5 class="mb-0">
+                        <%= user.email %>
+                    </h5>
+                </div>
+                <a href="/logout" class="btn btn-secondary">
+                    <i class="bi bi-box-arrow-right"></i> Sign out
+                </a>
+            </div>
+
+            <!-- Title -->
+            <div class="card-header">
+                <h1 class="text-center mb-0">PostgreSQL BREAD, Pagination, and Authentication</h1>
+            </div>
+
+            <div class="card-body">
+                <!-- Filter Form -->
+                <form method="GET" action="/todos" class="mb-4">
+                    <input type="hidden" name="sortBy" value="<%= query.sortBy || 'deadline' %>">
+                    <input type="hidden" name="sortMode" value="<%= query.sortMode || 'asc' %>">
+
+                    <!-- Title -->
+                    <div class="row mb-3">
+                        <label for="title" class="col-sm-2 col-form-label">Title</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="title" name="title"
+                                placeholder="Insert your title" value="<%= query.title || '' %>">
+                        </div>
+                    </div>
+
+                    <!-- Deadline -->
+                    <div class="row mb-3">
+                        <label for="deadline" class="col-sm-2 col-form-label">Deadline</label>
+                        <div class="col-sm-10 d-flex justify-content-between align-items-center">
+                            <div class="col-sm-5">
+                                <input type="date" class="form-control" name="startdate"
+                                    value="<%= query.startdate || '' %>">
+                            </div>
+                            <div class="mx-2">s.d</div>
+                            <div class="col-sm-5">
+                                <input type="date" class="form-control" name="enddate"
+                                    value="<%= query.enddate || '' %>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Complete -->
+                    <div class="row mb-3">
+                        <label for="complete" class="col-sm-2 col-form-label">Complete</label>
+                        <div class="col-sm-10">
+                            <select class="form-select" id="complete" name="complete">
+                                <option value="">-select complete-</option>
+                                <option value="true" <%=query.complete==='true' ? 'selected' : '' %>>Done</option>
+                                <option value="false" <%=query.complete==='false' ? 'selected' : '' %>>Not Yet</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Operator -->
+                    <fieldset class="row mb-3">
+                        <legend class="col-form-label col-sm-2 pt-0">Operation</legend>
+                        <div class="col-sm-10">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="operator" id="OR" value="OR"
+                                    <%=query.operator !=='AND' ? 'checked' : '' %>
+                                >
+                                <label class="form-check-label" for="OR">OR</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="operator" id="AND" value="AND"
+                                    <%=query.operator==='AND' ? 'checked' : '' %>
+                                >
+                                <label class="form-check-label" for="AND">AND</label>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Buttons -->
+                    <div>
+                        <button type="submit" class="btn btn-info text-dark me-2">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                        <a href="/todos" class="btn btn-warning text-dark">
+                            <i class="bi bi-arrow-repeat"></i> Reset
+                        </a>
+                    </div>
+                </form>
+
+
+                <!-- Table -->
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>
+                                <a href="?sortBy=title&sortMode=<%= query.sortBy === 'title' && query.sortMode === 'asc' ? 'desc' : 'asc' %>"
+                                    class="text-decoration-none text-dark">
+                                    Title
+                                    <% if (query.sortBy==='title' ) { %>
+                                        <i class="fa-solid fa-sort-<%= query.sortMode === 'asc' ? 'up' : 'down' %>"></i>
+                                        <% } else { %>
+                                            <i class="fa-solid fa-sort"></i>
+                                            <% } %>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sortBy=complete&sortMode=<%= query.sortBy === 'complete' && query.sortMode === 'asc' ? 'desc' : 'asc' %>"
+                                    class="text-decoration-none text-dark">
+                                    Complete
+                                    <% if (query.sortBy==='complete' ) { %>
+                                        <i class="fa-solid fa-sort-<%= query.sortMode === 'asc' ? 'up' : 'down' %>"></i>
+                                        <% } else { %>
+                                            <i class="fa-solid fa-sort"></i>
+                                            <% } %>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="?sortBy=deadline&sortMode=<%= query.sortBy === 'deadline' && query.sortMode === 'asc' ? 'desc' : 'asc' %>"
+                                    class="text-decoration-none text-dark">
+                                    Deadline
+                                    <% if (query.sortBy==='deadline' ) { %>
+                                        <i class="fa-solid fa-sort-<%= query.sortMode === 'asc' ? 'up' : 'down' %>"></i>
+                                        <% } else { %>
+                                            <i class="fa-solid fa-sort"></i>
+                                            <% } %>
+                                </a>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <% if (todos && todos.length===0) { %>
+                            <tr>
+                                <td colspan="5" class="text-center">No data found</td>
+                            </tr>
+                            <% } else if (todos) { %>
+                                <% todos.forEach((todo, index)=> { %>
+                                    <tr>
+                                        <td>
+                                            <%= (offset || 0) + index + 1 %>
+                                        </td>
+                                        <td>
+                                            <%= todo.title %>
+                                        </td>
+                                        <td>
+                                            <%= todo.complete ? "Done" : "Not Yet" %>
+                                        </td>
+                                        <td>
+                                            <%= moment(todo.deadline).format('DD MMM YYYY HH:mm') %>
+                                        </td>
+                                        <td>
+                                            <a href="/todos/edit/<%= todo.id %>"
+                                                class="btn btn-sm btn-success text-white">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="showDeleteModal('<%= todo.id %>', '<%= todo.title %>')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <% }); %>
+                                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer with Add Button and Pagination -->
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <!-- Add Button -->
+                <a href="/todos/add" class="btn btn-primary text-white">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
+
+                <!-- Pagination -->
+                <nav aria-label="Page navigation">
+                    <ul class="pagination mb-0">
+                        <% if (currentPage && currentPage> 1) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?<%= paginationQuery %>page=<%= currentPage - 1 %>"
+                                    aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            <% } %>
+
+                                <% if (totalPages) { %>
+                                    <% for (let i=1; i <=totalPages; i++) { %>
+                                        <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                                            <a class="page-link" href="?<%= paginationQuery %>page=<%= i %>">
+                                                <%= i %>
+                                            </a>
+                                        </li>
+                                        <% } %>
+                                            <% } %>
+
+                                                <% if (currentPage && totalPages && currentPage < totalPages) { %>
+                                                    <li class="page-item">
+                                                        <a class="page-link"
+                                                            href="?<%= paginationQuery %>page=<%= currentPage + 1 %>"
+                                                            aria-label="Next">
+                                                            <span aria-hidden="true">&raquo;</span>
+                                                        </a>
+                                                    </li>
+                                                    <% } %>
+                    </ul>
+                </nav>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDeleteModal(id, name) {
+            const message = `Are you sure you want to delete '${name}'?`;
+            document.getElementById('deleteMessage').innerText = message;
+            document.getElementById('confirmDeleteBtn').href = `/todos/delete/${id}`;
+
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        }
+    </script>
+</body>
+
+</html>

@@ -44,7 +44,7 @@ module.exports = function (db) {
         hashedPassword,
       ]);
 
-      req.session.success = "Berhasil daftar, silakan login!";
+      req.session.success = "successfully registered, please sig in!";
       return res.redirect("/");
     } catch (err) {
       return res.render("register", {
