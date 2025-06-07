@@ -183,7 +183,7 @@
                             </tr>
                             <% } else if (todos) { %>
                                 <% todos.forEach((todo, index)=> { %>
-                                    <tr>
+                                    <tr class="<%= moment(todo.deadline).isBefore(moment()) ? 'table-danger' : '' %>">
                                         <td>
                                             <%= (offset || 0) + index + 1 %>
                                         </td>
