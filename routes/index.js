@@ -3,28 +3,33 @@ const { generatePassword, comparePassword } = require("../helpers/utils");
 const router = express.Router();
 
 module.exports = function (db) {
+  // Halaman Login
   router.get("/", function (req, res) {
-    const successMessage = req.session.success || null;
-    delete req.session.success;
+    const successMessage = req.flash("success");
+    const errorMessage = req.flash("error");
+
     res.render("login", {
-      successMessage,
-      errorMessage: null,
+      successMessage: successMessage[0] || null,
+      errorMessage: errorMessage[0] || null,
     });
   });
 
+  // Halaman Register
   router.get("/register", function (req, res) {
+    const errorMessage = req.flash("error");
+
     res.render("register", {
-      errorMessage: null,
+      errorMessage: errorMessage[0] || null,
     });
   });
 
+  // Proses Register
   router.post("/register", async function (req, res) {
     const { email, password, repassword } = req.body;
 
     if (password !== repassword) {
-      return res.render("register", {
-        errorMessage: "Password do not match",
-      });
+      req.flash("error", "Password do not match");
+      return res.redirect("/register");
     }
 
     try {
@@ -32,10 +37,10 @@ module.exports = function (db) {
         `SELECT * FROM users WHERE email = $1`,
         [email]
       );
+
       if (existingUser.rows.length > 0) {
-        return res.render("register", {
-          errorMessage: "Email sudah terdaftar",
-        });
+        req.flash("error", "Email sudah terdaftar");
+        return res.redirect("/register");
       }
 
       const hashedPassword = generatePassword(password);
@@ -44,15 +49,15 @@ module.exports = function (db) {
         hashedPassword,
       ]);
 
-      req.session.success = "successfully registered, please sig in!";
+      req.flash("success", "Successfully registered, please sign in!");
       return res.redirect("/");
     } catch (err) {
-      return res.render("register", {
-        errorMessage: "Error saat registrasi: " + err.message,
-      });
+      req.flash("error", "Error saat registrasi: " + err.message);
+      return res.redirect("/register");
     }
   });
 
+  // Proses Login
   router.post("/login", async function (req, res) {
     const { email, password } = req.body;
 
@@ -62,32 +67,27 @@ module.exports = function (db) {
       ]);
 
       if (result.rows.length === 0) {
-        return res.render("login", {
-          errorMessage: "email is not registered",
-          successMessage: null,
-        });
+        req.flash("error", "Email is not registered");
+        return res.redirect("/");
       }
 
       const user = result.rows[0];
       const match = comparePassword(password, user.password);
 
       if (!match) {
-        return res.render("login", {
-          errorMessage: "password is wrong",
-          successMessage: null,
-        });
+        req.flash("error", "Password is wrong");
+        return res.redirect("/");
       }
 
       req.session.user = { id: user.id, email: user.email };
       return res.redirect("/todos");
     } catch (err) {
-      return res.render("login", {
-        errorMessage: "Login error: " + err.message,
-        successMessage: null,
-      });
+      req.flash("error", "Login error: " + err.message);
+      return res.redirect("/");
     }
   });
 
+  // Logout
   router.get("/logout", function (req, res) {
     req.session.destroy((err) => {
       if (err) {

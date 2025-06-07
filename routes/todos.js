@@ -17,7 +17,7 @@ module.exports = function (db) {
         enddate,
         complete,
         operator,
-        sortBy = "deadline",
+        sortBy = "id",
         sortMode = "asc",
       } = req.query;
 
@@ -61,9 +61,9 @@ module.exports = function (db) {
             )})`
           : `WHERE ${baseCondition}`;
 
-      // Validasi sorting
-      const validFields = ["title", "complete", "deadline"];
-      const safeSortBy = validFields.includes(sortBy) ? sortBy : null;
+      // sorting
+      const validFields = ["id", "title", "complete", "deadline"];
+      const safeSortBy = validFields.includes(sortBy) ? sortBy : "id";
       const safeSortMode = sortMode === "desc" ? "DESC" : "ASC";
 
       // query total data

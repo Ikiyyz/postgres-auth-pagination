@@ -63,7 +63,7 @@
             <div class="card-body">
                 <!-- Filter Form -->
                 <form method="GET" action="/todos" class="mb-4">
-                    <input type="hidden" name="sortBy" value="<%= query.sortBy || 'deadline' %>">
+                    <input type="hidden" name="sortBy" value="<%= query.sortBy || 'id' %>">
                     <input type="hidden" name="sortMode" value="<%= query.sortMode || 'asc' %>">
 
                     <!-- Title -->
