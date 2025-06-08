@@ -1,9 +1,13 @@
 const express = require("express");
-const { generatePassword, comparePassword } = require("../helpers/utils");
+const {
+  generatePassword,
+  comparePassword,
+  checkLogin,
+} = require("../helpers/utils");
+const path = require("path");
 const router = express.Router();
 
 module.exports = function (db) {
-  // Halaman Login
   router.get("/", function (req, res) {
     const successMessage = req.flash("success");
     const errorMessage = req.flash("error");
@@ -14,7 +18,6 @@ module.exports = function (db) {
     });
   });
 
-  // Halaman Register
   router.get("/register", function (req, res) {
     const errorMessage = req.flash("error");
 
@@ -23,7 +26,6 @@ module.exports = function (db) {
     });
   });
 
-  // Proses Register
   router.post("/register", async function (req, res) {
     const { email, password, repassword } = req.body;
 
@@ -57,7 +59,6 @@ module.exports = function (db) {
     }
   });
 
-  // Proses Login
   router.post("/login", async function (req, res) {
     const { email, password } = req.body;
 
@@ -79,7 +80,12 @@ module.exports = function (db) {
         return res.redirect("/");
       }
 
-      req.session.user = { id: user.id, email: user.email };
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        avatar: user.avatar,
+      };
+
       return res.redirect("/todos");
     } catch (err) {
       req.flash("error", "Login error: " + err.message);
@@ -87,13 +93,59 @@ module.exports = function (db) {
     }
   });
 
-  // Logout
   router.get("/logout", function (req, res) {
     req.session.destroy((err) => {
       if (err) {
         return res.send("Error saat logout");
       }
       res.redirect("/");
+    });
+  });
+
+  router.get("/users/avatar", checkLogin, function (req, res) {
+    res.render("avatar", {
+      user: req.session.user,
+      avatar: req.session.user.avatar || null,
+      errorMessage: req.flash("error")[0] || null,
+    });
+  });
+
+  router.post("/users/avatar", checkLogin, function (req, res) {
+    if (!req.files || !req.files.avatar) {
+      console.log("req.files:", req.files);
+      req.flash("error", "Tidak ada file yang diupload");
+      return res.redirect("/users/avatar");
+    }
+
+    const avatar = req.files.avatar;
+    const fileExt = path.extname(avatar.name);
+    const fileName = `${req.session.user.id}_${Date.now()}${fileExt}`;
+    const uploadPath = path.join(
+      __dirname,
+      "../public/images/avatars",
+      fileName
+    );
+
+    avatar.mv(uploadPath, function (err) {
+      if (err) {
+        req.flash("error", "Gagal upload: " + err.message);
+        return res.redirect("/users/avatar");
+      }
+      console.log("File berhasil diupload ke:", uploadPath);
+
+      db.query(
+        "UPDATE users SET avatar = $1 WHERE id = $2",
+        [fileName, req.session.user.id],
+        function (dbErr) {
+          if (dbErr) {
+            req.flash("error", "Gagal update database: " + dbErr.message);
+            return res.redirect("/users/avatar");
+          }
+
+          req.session.user.avatar = fileName;
+          return res.redirect("/todos");
+        }
+      );
     });
   });
 

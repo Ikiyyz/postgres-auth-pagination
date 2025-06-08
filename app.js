@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const session = require("express-session");
 const flash = require("connect-flash");
+const fileUpload = require("express-fileupload");
 const { Pool } = require("pg");
 
 const pool = new Pool({
@@ -15,8 +16,8 @@ const pool = new Pool({
   database: "tododb",
 });
 
-const indexRouter = require("./routes/index.js")(pool);   
-const todosRouter = require("./routes/todos.js")(pool);   
+const indexRouter = require("./routes/index.js")(pool);
+const todosRouter = require("./routes/todos.js")(pool);
 
 const app = express();
 
@@ -30,15 +31,17 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use(session({
-  secret: "rahasia_todoku",
-  resave: false,
-  saveUninitialized: false,
-}));
+app.use(
+  session({
+    secret: "rahasia_todoku",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
 app.use(flash());
+app.use(fileUpload());
 
-// Routing
 app.use("/", indexRouter);
 app.use("/todos", todosRouter);
 

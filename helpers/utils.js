@@ -1,11 +1,21 @@
-const bycrpt = require('bcrypt');
-const salrtRounds = 10;
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
+
+function generatePassword(password) {
+  return bcrypt.hashSync(password, saltRounds);
+}
+
+function comparePassword(password, hash) {
+  return bcrypt.compareSync(password, hash);
+}
+
+const checkLogin = (req, res, next) => {
+  if (!req.session.user) return res.redirect("/");
+  next();
+};
 
 module.exports = {
-    generatePassword : function(password) {
-        return bycrpt.hashSync(password, salrtRounds);
-    },
-    comparePassword : function(password, hash) {
-        return bycrpt.compareSync(password, hash);
-    }
-}
+  generatePassword,
+  comparePassword,
+  checkLogin,
+};

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Change Avatar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        #avatarPreview {
+            width: 250px;
+            height: 250px;
+            object-fit: contain;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            padding: 10px;
+        }
+
+        .btn-group-bottom {
+            position: relative;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-header text-center">
+                <h3><strong>Change Avatar</strong></h3>
+            </div>
+            <div class="card-body">
+                <form action="/users/avatar" method="post" enctype="multipart/form-data">
+                    <table class="table table-striped">
+                        <tr>
+                            <th style="width: 20%;">Avatar</th>
+                            <td><input type="file" class="form-control" id="avatar" name="avatar" accept="image/*" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Preview</th>
+                            <td><img id="avatarPreview" src="/images/avatars/<%= user.avatar || 'my.jpg' %>"
+                                    alt="Avatar Preview" /></td>
+                        </tr>
+                    </table>
+
+                    <div class="btn-group-bottom d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save-fill"></i>
+                        </button>
+                        <a href="/todos" class="btn btn-warning">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById("avatar");
+        const previewImg = document.getElementById("avatarPreview");
+
+        fileInput.addEventListener("change", function () {
+            const file = this.files[0];
+            if (file) {
+                previewImg.src = URL.createObjectURL(file);
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,13 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const moment = require("moment");
+const { checkLogin } = require("../helpers/utils.js");
 
 module.exports = function (db) {
-  const checkLogin = (req, res, next) => {
-    if (!req.session.user) return res.redirect("/");
-    next();
-  };
-
   router.get("/", checkLogin, async function (req, res) {
     try {
       const {
@@ -17,7 +13,7 @@ module.exports = function (db) {
         enddate,
         complete,
         operator,
-        sortBy = "id",
+        sortBy = "deadline",
         sortMode = "asc",
       } = req.query;
 
@@ -27,82 +23,91 @@ module.exports = function (db) {
       const filters = [];
       const values = [];
 
-      const baseCondition = `userid = $${values.length + 1}`;
+      // Base condition: userid dari session
       values.push(req.session.user.id);
+      let baseCondition = `users.id = $${values.length}`;
 
       if (title) {
         values.push(`%${title}%`);
-        filters.push(`title ILIKE $${values.length}`);
+        filters.push(`todos.title ILIKE $${values.length}`);
       }
 
       if (startdate && enddate) {
         values.push(startdate);
         values.push(`${enddate} 23:59:59`);
         filters.push(
-          `deadline BETWEEN $${values.length - 1} AND $${values.length}`
+          `todos.deadline BETWEEN $${values.length - 1} AND $${values.length}`
         );
       } else if (startdate) {
         values.push(startdate);
-        filters.push(`deadline >= $${values.length}`);
+        filters.push(`todos.deadline >= $${values.length}`);
       } else if (enddate) {
         values.push(`${enddate} 23:59:59`);
-        filters.push(`deadline <= $${values.length}`);
+        filters.push(`todos.deadline <= $${values.length}`);
       }
 
       if (complete === "true" || complete === "false") {
         values.push(complete === "true");
-        filters.push(`complete = $${values.length}`);
+        filters.push(`todos.complete = $${values.length}`);
       }
 
-      const whereClause =
-        filters.length > 0
-          ? `WHERE ${baseCondition} AND (${filters.join(
-              ` ${operator.toUpperCase()} `
-            )})`
-          : `WHERE ${baseCondition}`;
+      const op = operator === "or" ? "OR" : "AND";
 
-      // sorting
-      const validFields = ["id", "title", "complete", "deadline"];
-      const safeSortBy = validFields.includes(sortBy) ? sortBy : "id";
-      const safeSortMode = sortMode === "desc" ? "DESC" : "ASC";
-
-      // query total data
-      let sql = `SELECT * FROM todos ${whereClause}`;
-      let sqlCount = `SELECT COUNT(*) AS total FROM todos ${whereClause}`;
-
-      if (safeSortBy) {
-        sql += ` ORDER BY ${safeSortBy} ${safeSortMode}`;
+      let whereClause = `WHERE ${baseCondition}`;
+      if (filters.length > 0) {
+        whereClause += ` AND (${filters.join(` ${op} `)})`;
       }
 
-      sql += ` LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
-      values.push(limit, offset);
+      const validSortFields = ["deadline", "title", "complete", "id"];
+      const safeSortBy = validSortFields.includes(sortBy) ? sortBy : "deadline";
+      const safeSortMode = sortMode.toLowerCase() === "desc" ? "DESC" : "ASC";
 
-      // query total pagination
-      const countResult = await db.query(
+      // Tambah limit dan offset parameter
+      values.push(limit);
+      values.push(offset);
+
+      const sql = `
+        SELECT todos.id, todos.title, todos.deadline, todos.complete
+        FROM todos
+        LEFT JOIN users ON todos.userid = users.id
+        ${whereClause}
+        ORDER BY todos.${safeSortBy} ${safeSortMode}
+        LIMIT $${values.length - 1} OFFSET $${values.length}
+      `;
+
+      const sqlCount = `
+        SELECT COUNT(*) AS total
+        FROM todos
+        LEFT JOIN users ON todos.userid = users.id
+        ${whereClause}
+      `;
+
+      const todosCount = await db.query(
         sqlCount,
         values.slice(0, values.length - 2)
       );
-      const total = parseInt(countResult.rows[0].total, 10);
-      const totalPages = Math.ceil(total / limit);
+      const totalRows = parseInt(todosCount.rows[0].total, 10);
+      const totalPages = Math.ceil(totalRows / limit);
+      const todos = await db.query(sql, values);
 
-      // query todo
-      const todosResult = await db.query(sql, values);
-
+      const pageQuery = `page=${page}`;
       const urlSearchParams = new URLSearchParams(req.query);
       urlSearchParams.delete("page");
-      const paginationQuery = urlSearchParams.toString()
-        ? urlSearchParams.toString() + "&"
-        : "";
+      const otherQuery = urlSearchParams.toString();
+
+      const paginationQuery = otherQuery
+        ? `${pageQuery}&${otherQuery}`
+        : pageQuery;
 
       res.render("todos/list", {
-        todos: todosResult.rows,
+        todos: todos.rows,
         currentPage: Number(page),
         totalPages,
         query: req.query,
         user: req.session.user,
         offset,
-        sortBy: sortBy || "",
-        sortMode: sortMode || "",
+        sortBy: safeSortBy,
+        sortMode: safeSortMode,
         moment,
         paginationQuery,
       });
